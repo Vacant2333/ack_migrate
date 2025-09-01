@@ -23,10 +23,30 @@ type Client struct {
 
 func NewCloudPilotClient(apiKey, clusterID string) *Client {
 	return &Client{
-		API:       "https://papi.cloudpilot.ai",
+		API:       "https://api.cloudpilot.ai",
 		APIKEY:    apiKey,
 		ClusterID: clusterID,
 	}
+}
+
+func (c *Client) DeleteClusterRebalanceNodePool(nodePoolName string) error {
+	url := fmt.Sprintf("%s/api/v1/rebalance/clusters/%s/nodepools/%s", c.API, c.ClusterID, nodePoolName)
+	return doJSONNoData(c, http.MethodDelete, url, nil)
+}
+
+func (c *Client) DeleteClusterRebalanceNodeClass(nodeClassName string) error {
+	url := fmt.Sprintf("%s/api/v1/rebalance/clusters/%s/nodeclasses/%s", c.API, c.ClusterID, nodeClassName)
+	return doJSONNoData(c, http.MethodDelete, url, nil)
+}
+
+func (c *Client) ListClusterRebalanceNodePools() (RebalanceNodePoolList, error) {
+	url := fmt.Sprintf("%s/api/v1/rebalance/clusters/%s/nodepools", c.API, c.ClusterID)
+	return doJSON[RebalanceNodePoolList](c, http.MethodGet, url, nil)
+}
+
+func (c *Client) ListClusterRebalanceNodeClasses() (RebalanceNodeClassList, error) {
+	url := fmt.Sprintf("%s/api/v1/rebalance/clusters/%s/nodeclasses", c.API, c.ClusterID)
+	return doJSON[RebalanceNodeClassList](c, http.MethodGet, url, nil)
 }
 
 func (c *Client) ApplyNodePool(nodepool RebalanceNodePool) error {

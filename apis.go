@@ -5,6 +5,14 @@ import (
 	alibabacloudcorev1 "github.com/cloudpilot-ai/lib/pkg/alibabacloud/karpenter/apis/v1"
 )
 
+type RebalanceNodePoolList struct {
+	ECSNodePools []ECSNodePool `json:"ecsNodePools"`
+}
+
+type RebalanceNodeClassList struct {
+	ECSNodeClasses []ECSNodeClass `json:"ecsNodeClasses"`
+}
+
 type RebalanceNodePool struct {
 	ECSNodePool *ECSNodePool `json:"ecsNodePool"`
 }

@@ -60,6 +60,19 @@ func main() {
 	if err != nil {
 		panic(fmt.Errorf("failed to create client: %v", err))
 	}
+	c := NewCloudPilotClient(ak, clusterID)
+
+	// Require explicit "delete"
+	if !requireExactInput("Type 'delete' to DELETE the current NodePools & NodeClasses on the server side, or anything else to skip: ", "delete") {
+		klog.Infof("delete skipped by user; migration left original objects intact")
+		return
+	}
+	// Delete from cluster
+	if err := deleteAll(c); err != nil {
+		fmt.Fprintf(os.Stderr, "error: delete failed: %v\n", err)
+		os.Exit(2)
+	}
+	klog.Infof("delete finished successfully")
 
 	var nodepoolList alibabacloudcorev1.NodePoolList
 	if err := kubeClient.List(context.Background(), &nodepoolList); err != nil {
@@ -80,23 +93,9 @@ func main() {
 	}
 
 	// Upload to CloudPilot
-	c := NewCloudPilotClient(ak, clusterID) // TODO: adjust ctor
-	if err := uploadAll(context.Background(), c, nodeclassList.Items, nodepoolList.Items); err != nil {
+	if err := uploadAll(c, nodeclassList.Items, nodepoolList.Items); err != nil {
 		fmt.Fprintf(os.Stderr, "error: upload failed: %v\n", err)
 		os.Exit(2)
 	}
 	klog.Infof("upload finished successfully")
-
-	// Require explicit "delete"
-	if !requireExactInput("Type 'delete' to DELETE the current NodePools & NodeClasses from this cluster, or anything else to skip: ", "delete") {
-		klog.Infof("delete skipped by user; migration left original objects intact")
-		return
-	}
-
-	// Delete from cluster
-	if err := deleteAll(context.Background(), kubeClient, nodeclassList.Items, nodepoolList.Items); err != nil {
-		fmt.Fprintf(os.Stderr, "error: delete failed: %v\n", err)
-		os.Exit(2)
-	}
-	klog.Infof("delete finished successfully")
 }

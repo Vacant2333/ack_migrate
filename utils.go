@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,37 +11,35 @@ import (
 
 	alibabacloudproviderv1alpha1 "github.com/cloudpilot-ai/lib/pkg/alibabacloud/karpenter-provider-alibabacloud/apis/v1alpha1"
 	alibabacloudcorev1 "github.com/cloudpilot-ai/lib/pkg/alibabacloud/karpenter/apis/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // deleteAll removes the exact listed NodeClasses and NodePools from the cluster.
 // Uses foreground propagation to ensure cascading; adjust if your CRDs need background.
-func deleteAll(
-	ctx context.Context,
-	kube client.Client,
-	nodeclasses []alibabacloudproviderv1alpha1.ECSNodeClass,
-	nodepools []alibabacloudcorev1.NodePool,
-) error {
-	// Delete NodePools first if they reference NodeClasses; adjust order if needed.
-	policy := metav1.DeletePropagationForeground
-	opts := &client.DeleteOptions{PropagationPolicy: &policy}
+func deleteAll(c *Client) error {
+	nodepools, err := c.ListClusterRebalanceNodePools()
+	if err != nil {
+		return err
+	}
+	nodeclasses, err := c.ListClusterRebalanceNodeClasses()
+	if err != nil {
+		return err
+	}
 
 	// Delete NodePools
-	for i := range nodepools {
-		np := &nodepools[i] // IMPORTANT: use index to avoid taking address of range variable
+	for i := range nodepools.ECSNodePools {
+		np := &nodepools.ECSNodePools[i]
 		klog.Infof("deleting nodepool: %s", np.Name)
-		if err := kube.Delete(ctx, np, opts); err != nil {
+		if err := c.DeleteClusterRebalanceNodePool(np.Name); err != nil {
 			return fmt.Errorf("delete nodepool %q: %w", np.Name, err)
 		}
 	}
 
 	// Delete NodeClasses
-	for i := range nodeclasses {
-		nc := &nodeclasses[i]
+	for i := range nodeclasses.ECSNodeClasses {
+		nc := &nodeclasses.ECSNodeClasses[i]
 		klog.Infof("deleting nodeclass: %s", nc.Name)
-		if err := kube.Delete(ctx, nc, opts); err != nil {
+		if err := c.DeleteClusterRebalanceNodeClass(nc.Name); err != nil {
 			return fmt.Errorf("delete nodeclass %q: %w", nc.Name, err)
 		}
 	}
@@ -50,8 +47,7 @@ func deleteAll(
 }
 
 func uploadAll(
-	ctx context.Context,
-	c *Client, // TODO: adjust to your real client type
+	c *Client,
 	nodeclasses []alibabacloudproviderv1alpha1.ECSNodeClass,
 	nodepools []alibabacloudcorev1.NodePool,
 ) error {
@@ -76,7 +72,7 @@ func uploadAll(
 		if err := c.ApplyNodePool(RebalanceNodePool{
 			ECSNodePool: &ECSNodePool{
 				Name:         np.Name,
-				Enable:       false, // keep disabled initially; adjust to your policy
+				Enable:       true,
 				NodePoolSpec: &np.Spec,
 			},
 		}); err != nil {
