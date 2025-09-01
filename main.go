@@ -65,41 +65,38 @@ func main() {
 	if err := kubeClient.List(context.Background(), &nodepoolList); err != nil {
 		panic(fmt.Errorf("failed to list nodepools: %v", err))
 	}
-	for _, nodepool := range nodepoolList.Items {
-		klog.Infof("nodepool: %s", nodepool.Name)
-	}
-
 	var nodeclassList alibabacloudproviderv1alpha1.ECSNodeClassList
 	if err := kubeClient.List(context.Background(), &nodeclassList); err != nil {
 		panic(fmt.Errorf("failed to list nodeclasses: %v", err))
 	}
-	for _, nodeclass := range nodeclassList.Items {
-		klog.Infof("nodeclass: %s", nodeclass.Name)
+
+	// Preview tables
+	printPreviewTables(nodepoolList.Items, nodeclassList.Items)
+
+	// Require explicit "upload"
+	if !requireExactInput("Type 'upload' to start uploading to CloudPilot AI, or anything else to abort: ", "upload") {
+		klog.Infof("aborted by user; nothing uploaded, nothing deleted")
+		return
 	}
 
-	c := NewCloudPilotClient(ak, clusterID)
-	for _, nc := range nodeclassList.Items {
-		klog.Infof("migrating nodeclass: %s", nc.Name)
-		err := c.ApplyNodeClass(RebalanceNodeClass{ECSNodeClass: &ECSNodeClass{
-			Name:          nc.Name,
-			NodeClassSpec: &nc.Spec,
-		}})
-		if err != nil {
-			panic(fmt.Errorf("failed to migrate nodeclass %s to CloudPilot AI: %v", nc.Name, err))
-		}
+	// Upload to CloudPilot
+	c := NewCloudPilotClient(ak, clusterID) // TODO: adjust ctor
+	if err := uploadAll(context.Background(), c, nodeclassList.Items, nodepoolList.Items); err != nil {
+		fmt.Fprintf(os.Stderr, "error: upload failed: %v\n", err)
+		os.Exit(2)
+	}
+	klog.Infof("upload finished successfully")
+
+	// Require explicit "delete"
+	if !requireExactInput("Type 'delete' to DELETE the current NodePools & NodeClasses from this cluster, or anything else to skip: ", "delete") {
+		klog.Infof("delete skipped by user; migration left original objects intact")
+		return
 	}
 
-	for _, np := range nodepoolList.Items {
-		klog.Infof("migrating nodepool: %s", np.Name)
-		err := c.ApplyNodePool(RebalanceNodePool{ECSNodePool: &ECSNodePool{
-			Name:         np.Name,
-			Enable:       false,
-			NodePoolSpec: &np.Spec,
-		}})
-		if err != nil {
-			panic(fmt.Errorf("failed to migrate nodepool %s to CloudPilot AI: %v", np.Name, err))
-		}
+	// Delete from cluster
+	if err := deleteAll(context.Background(), kubeClient, nodeclassList.Items, nodepoolList.Items); err != nil {
+		fmt.Fprintf(os.Stderr, "error: delete failed: %v\n", err)
+		os.Exit(2)
 	}
-
-	klog.Infof("Migrate completed")
+	klog.Infof("delete finished successfully")
 }

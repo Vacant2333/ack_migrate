@@ -23,7 +23,7 @@ type Client struct {
 
 func NewCloudPilotClient(apiKey, clusterID string) *Client {
 	return &Client{
-		API:       "https://api.cloudpilot.ai",
+		API:       "https://papi.cloudpilot.ai",
 		APIKEY:    apiKey,
 		ClusterID: clusterID,
 	}
