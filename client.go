@@ -21,18 +21,27 @@ type Client struct {
 	rc        *retryablehttp.Client
 }
 
-func NewCloudPilotClient(api, apiKey, clusterID string) *Client {
+func NewCloudPilotClient(apiKey, clusterID string) *Client {
 	return &Client{
-		API:       api,
+		API:       "https://api.cloudpilot.ai",
 		APIKEY:    apiKey,
 		ClusterID: clusterID,
 	}
 }
 
-func (c *Client) ApplyNodePool(deltas []*api.ClusterAutoscalingPolicyResourceStatusDelta) error {
-	url := fmt.Sprintf("%s/api/v1/workloadautoscaler/clusters/%s/autoscalingpolicies/status/deltas", c.API, c.ClusterID)
-	if err := doJSONNoData(c, http.MethodPost, url, deltas); err != nil {
-		klog.Errorf("SendClusterAutoscalingPolicyResourceStatusDeltas failed: %v", err)
+func (c *Client) ApplyNodePool(nodepool RebalanceNodePool) error {
+	url := fmt.Sprintf("%s/api/v1/rebalance/clusters/%s/nodepools", c.API, c.ClusterID)
+	if err := doJSONNoData(c, http.MethodPost, url, nodepool); err != nil {
+		klog.Errorf("ApplyNodePool %s failed: %v", nodepool.ECSNodePool.Name, err)
+		return err
+	}
+	return nil
+}
+
+func (c *Client) ApplyNodeClass(nodeclass RebalanceNodeClass) error {
+	url := fmt.Sprintf("%s/api/v1/rebalance/clusters/%s/nodeclasses", c.API, c.ClusterID)
+	if err := doJSONNoData(c, http.MethodPost, url, nodeclass); err != nil {
+		klog.Errorf("ApplyNodeClass %s failed: %v", nodeclass.ECSNodeClass.Name, err)
 		return err
 	}
 	return nil

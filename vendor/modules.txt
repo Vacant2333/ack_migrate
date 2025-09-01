@@ -16,7 +16,6 @@ github.com/cenkalti/backoff/v4
 github.com/cespare/xxhash/v2
 # github.com/cloudpilot-ai/cloudpilot-agent v1.13.1
 ## explicit; go 1.24.4
-github.com/cloudpilot-ai/cloudpilot-agent/pkg/cloudpilot-client
 github.com/cloudpilot-ai/cloudpilot-agent/pkg/cloudpilot-client/api
 github.com/cloudpilot-ai/cloudpilot-agent/pkg/definitions
 github.com/cloudpilot-ai/cloudpilot-agent/pkg/utils
