@@ -19,27 +19,12 @@ func init() {
 	_ = alibabacloudcorev1.SchemeBuilder.AddToScheme(scheme.Scheme)
 }
 
-func printUsage() {
-	fmt.Fprintf(os.Stderr, `Usage:
-  ack_migrate --clusterid <id>
-
-Flags:
-`)
-	flag.PrintDefaults()
-	fmt.Fprintf(os.Stderr, `
-Examples:
-  ack_migrate --clusterid 9b71a8d5-1500-5e64-957d-5fa75a1b0cb2
-`)
-}
-
 func main() {
 	var clusterID string
 	flag.StringVar(&clusterID, "clusterid", "", "CloudPilot AI cluster id (required)")
-	flag.Usage = printUsage
 	flag.Parse()
 
 	if clusterID == "" {
-		flag.Usage()
 		panic("--clusterid is required")
 	}
 	kubeconfig := os.Getenv("KUBECONFIG")
